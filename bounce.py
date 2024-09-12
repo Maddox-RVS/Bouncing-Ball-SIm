@@ -38,10 +38,9 @@ class Ball:
         self.color: str = color
         self.userInput: bool = False
         self.isOnFloor: bool = False
-        self.isCollidingWithObject: bool = False
 
     def __updateGravity(self):
-        if self.y >= -1.0 * (CANVAS_HEIGHT / 2) + self.radius and not self.userInput and not self.isCollidingWithObject:
+        if self.y >= -1.0 * (CANVAS_HEIGHT / 2) + self.radius and not self.userInput:
             self.velo.y -= self.gravitationalPull
 
     def __updatePosition(self):
@@ -104,26 +103,26 @@ class Ball:
         newXVelo: float = ((selfMass * selfVelo.x)+(otherMass * otherVelo.x))/(selfMass + otherMass)
         newYVelo: float = ((selfMass * selfVelo.y)+(otherMass * otherVelo.y))/(selfMass + otherMass)
         return Vector(newXVelo / 60.0, newYVelo / 60.0)
+    
+    def getLeft(self) -> Vector:
+        return Vector(self.x - self.radius, self.y)
+    def getRight(self) -> Vector:
+        return Vector(self.x + self.radius, self.y)
+    def getTop(self) -> Vector:
+        return Vector(self.x, self.y + self.radius)
+    def getBottom(self) -> Vector:
+        return Vector(self.x, self.y - self.radius)
+    
+    def collideBall(self, otherX: float, otherY: float, othrRadius: int) -> bool:
+        xDiff: float = self.x - otherX
+        yDiff: float = self.y - otherY
+        distSq: float = xDiff**2 + yDiff**2
+        totalRadius: float = self.radius + othrRadius
+        radiusSq: float = totalRadius**2
+        return distSq <= radiusSq
 
-    def handleBallCollision(self, otherX: int, otherY: int, otherRadius: int, otherVelo: Vector, otherMass: float) -> Vector:
-        smol: float = 0.00001
-        xDiff: int = abs(self.x - otherX)
-        yDiff: int = abs(self.y - otherY)
-        dist: Vector = Vector(xDiff, yDiff)
-        if dist.getResultant() > (self.radius + otherRadius):
-            self.isCollidingWithObject = False
-            return Vector(0, 0)
-        else: self.isCollidingWithObject = True
-        overlapResultant: float = (self.radius + otherRadius) - dist.getResultant()
-        theta: float = math.asin(abs(dist.y + smol) / (dist.getResultant() + smol))
-        if otherX < self.x: dist.x *= -1.0
-        if otherY < self.y: dist.y *= -1.0
-        solutionVector: Vector = Vector(
-            math.copysign(overlapResultant * math.cos(theta), dist.x),
-            math.copysign(overlapResultant * math.sin(theta), dist.y)
-        )
-        self.velo = self.__calculateSystemVelocity(otherVelo, otherRadius, otherMass)
-        return solutionVector
+    def handleBallCollision(self, otherBall) -> Vector:
+        self.velo = self.__calculateSystemVelocity(otherBall.velo, otherBall.radius, otherBall.getMass())
 
     def update(self):
         t.down()
@@ -134,6 +133,21 @@ class Ball:
         self.__handleUserInput()
         self.__updateGravity()
         self.__draw()
+
+def partition(arr: list[Ball], low: int, high: int) -> int:
+    pivot = arr[high]
+    i = low - 1
+    for j in range(low, high):
+        if arr[j].getLeft().x < pivot.getLeft().x:
+            i += 1
+            arr[i], arr[j] = arr[j], arr[i]
+    arr[i + 1], arr[high] = arr[high], arr[i + 1]
+    return i + 1
+def quickSort(arr: list, low: int, high: int):
+    if low < high:
+        pi = partition(arr, low, high)
+        quickSort(arr, low, pi - 1)
+        quickSort(arr, pi + 1, high)
 
 def init():
     t.title(CANVAS_TITLE)
@@ -146,13 +160,15 @@ def init():
 
 def gameLoop(balls: list[Ball]):
     while True:
-        for ball in balls:
-            for b in balls:
-                if b != ball:
-                    solutionVector: Vector = ball.handleBallCollision(b.x, b.y, b.radius, b.velo, b.getMass())
-                    b.x += solutionVector.x
-                    b.y += solutionVector.y
-            ball.update()
+        quickSort(balls, 0, len(balls) - 1)
+        for i in range(len(balls)):
+            balls[i].update()
+            for j in range(1, len(balls)):
+                if balls[j].getLeft().x > balls[i].getRight().x:
+                    break
+                if balls[i].collideBall(balls[j].x, balls[j].y, balls[j].radius):
+                    balls[i].handleBallCollision(balls[j])
+                    balls[j].handleBallCollision(balls[i])
         t.update()
         time.sleep(GAMELOOP_PERIOD)
         t.clear()
