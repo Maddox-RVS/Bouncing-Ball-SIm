@@ -6,8 +6,8 @@ import math
 
 GAMELOOP_PERIOD: float = 0.02
 CANVAS_TITLE: str = 'Bounce Sim'
-CANVAS_WIDTH: int = 500
-CANVAS_HEIGHT: int = 500
+CANVAS_WIDTH: int = 1000
+CANVAS_HEIGHT: int = 800
 PENSIZE: int = 3
 
 class Vector:
@@ -96,14 +96,6 @@ class Ball:
     def getMass(self):
         return (math.pi * self.radius**2) * self.massMultiplier
     
-    def __calculateSystemVelocity(self, otherVelocity: Vector, otherRadius: int, otherMass: float):
-        selfMass: float = self.getMass()
-        selfVelo: Vector = Vector(self.velo.x * 60.0, self.velo.y * 60.0)
-        otherVelo: Vector = Vector(otherVelocity.x * 60.0, otherVelocity.y * 60.0)
-        newXVelo: float = ((selfMass * selfVelo.x)+(otherMass * otherVelo.x))/(selfMass + otherMass)
-        newYVelo: float = ((selfMass * selfVelo.y)+(otherMass * otherVelo.y))/(selfMass + otherMass)
-        return Vector(newXVelo / 60.0, newYVelo / 60.0)
-    
     def getLeft(self) -> Vector:
         return Vector(self.x - self.radius, self.y)
     def getRight(self) -> Vector:
@@ -120,9 +112,37 @@ class Ball:
         totalRadius: float = self.radius + othrRadius
         radiusSq: float = totalRadius**2
         return distSq <= radiusSq
+    
+    def __calculateSystemVelocity(self, otherVelocity: Vector, otherRadius: int, otherMass: float):
+        selfMass: float = self.getMass()
+        selfVelo: Vector = Vector(self.velo.x * 60.0, self.velo.y * 60.0)
+        otherVelo: Vector = Vector(otherVelocity.x * 60.0, otherVelocity.y * 60.0)
+        newXVelo: float = ((selfMass * selfVelo.x)+(otherMass * otherVelo.x))/(selfMass + otherMass)
+        newYVelo: float = ((selfMass * selfVelo.y)+(otherMass * otherVelo.y))/(selfMass + otherMass)
+        return Vector(newXVelo / 60.0, newYVelo / 60.0)
+    
+    def collisionResolutionVector(self, otherBall) -> Vector:
+        smol: float = 0.00001
+        xDiff: int = abs(self.x - otherBall.x)
+        yDiff: int = abs(self.y - otherBall.y)
+        dist: Vector = Vector(xDiff, yDiff)
+        overlapResultant: float = (self.radius + otherBall.radius) - dist.getResultant()
+        theta: float = math.asin(abs(dist.y + smol) / (dist.getResultant() + smol))
+        if otherBall.x < self.x: dist.x *= -1.0
+        if otherBall.y < self.y: dist.y *= -1.0
+        solutionVector: Vector = Vector(
+            -1.0 * math.copysign(overlapResultant * math.cos(theta), dist.x),
+            -1.0 * math.copysign(overlapResultant * math.sin(theta), dist.y)
+        )
+        return solutionVector
 
     def handleBallCollision(self, otherBall) -> Vector:
-        self.velo = self.__calculateSystemVelocity(otherBall.velo, otherBall.radius, otherBall.getMass())
+        resolutionVector: Vector = self.collisionResolutionVector(otherBall)
+        self.x += resolutionVector.x
+        self.y += resolutionVector.y
+        momentum: Vector = self.__calculateSystemVelocity(otherBall.velo, otherBall.radius, otherBall.getMass())
+        self.velo.x = momentum.x
+        self.velo.y = momentum.y
 
     def update(self):
         t.down()
@@ -163,12 +183,11 @@ def gameLoop(balls: list[Ball]):
         quickSort(balls, 0, len(balls) - 1)
         for i in range(len(balls)):
             balls[i].update()
-            for j in range(1, len(balls)):
+            for j in range(i + 1, len(balls)):
                 if balls[j].getLeft().x > balls[i].getRight().x:
                     break
                 if balls[i].collideBall(balls[j].x, balls[j].y, balls[j].radius):
                     balls[i].handleBallCollision(balls[j])
-                    balls[j].handleBallCollision(balls[i])
         t.update()
         time.sleep(GAMELOOP_PERIOD)
         t.clear()
@@ -178,17 +197,17 @@ def generateBalls(ballNum: int) -> list[Ball]:
     balls = []
     for i in range(ballNum):
         balls.append(Ball(
-                    radius=random.randint(3, 40), 
+                    radius=20, 
                     x=random.randint(-150, 50), y=0, 
                     velo=Vector(random.randint(-10, 10), random.randint(-10, 10)), 
-                    frictionForcePercent=0.992,
+                    frictionForcePercent=0.392,
                     userForceStrength=random.randint(1, 3),
                     color=random.choice(colors)))
     return balls
 
 def main():
     init()
-    gameLoop(generateBalls(5))
+    gameLoop(generateBalls(25))
 
 if __name__ == '__main__':
     main()
