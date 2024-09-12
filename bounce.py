@@ -113,13 +113,19 @@ class Ball:
         radiusSq: float = totalRadius**2
         return distSq <= radiusSq
     
-    def __calculateSystemVelocity(self, otherVelocity: Vector, otherRadius: int, otherMass: float):
+    def __calculateSystemVelocity(self, otherBall) -> list[Vector]:
+        smol: float = 0.00001
         selfMass: float = self.getMass()
-        selfVelo: Vector = Vector(self.velo.x * 60.0, self.velo.y * 60.0)
-        otherVelo: Vector = Vector(otherVelocity.x * 60.0, otherVelocity.y * 60.0)
-        newXVelo: float = ((selfMass * selfVelo.x)+(otherMass * otherVelo.x))/(selfMass + otherMass)
-        newYVelo: float = ((selfMass * selfVelo.y)+(otherMass * otherVelo.y))/(selfMass + otherMass)
-        return Vector(newXVelo / 60.0, newYVelo / 60.0)
+        otherMass: float = otherBall.getMass()
+        dist: float = math.sqrt((self.x - otherBall.x)**2 + (self.y - otherBall.y)**2) + smol
+        normX: float = (otherBall.x - self.x) / dist
+        normY: float = (otherBall.y - self.y) / dist 
+        p: float = 2.0 * (self.velo.x * normX + self.velo.y * normY - otherBall.velo.x * normX - otherBall.velo.y * normY) / (selfMass + otherMass) 
+        vx1 = self.velo.x - p * selfMass * normX 
+        vy1 = self.velo.y - p * selfMass * normY
+        vx2 = otherBall.velo.x + p * otherMass * normX 
+        vy2 = otherBall.velo.y + p * otherMass * normY
+        return [Vector(vx1, vy1), Vector(vx2, vy2)]
     
     def collisionResolutionVector(self, otherBall) -> Vector:
         smol: float = 0.00001
@@ -140,9 +146,11 @@ class Ball:
         resolutionVector: Vector = self.collisionResolutionVector(otherBall)
         self.x += resolutionVector.x
         self.y += resolutionVector.y
-        momentum: Vector = self.__calculateSystemVelocity(otherBall.velo, otherBall.radius, otherBall.getMass())
-        self.velo.x = momentum.x
-        self.velo.y = momentum.y
+        momentum: list[Vector] = self.__calculateSystemVelocity(otherBall)
+        self.velo.x = momentum[0].x
+        self.velo.y = momentum[0].y
+        otherBall.velo.x = momentum[1].x
+        otherBall.velo.y = momentum[1].y
 
     def update(self):
         t.down()
@@ -197,17 +205,17 @@ def generateBalls(ballNum: int) -> list[Ball]:
     balls = []
     for i in range(ballNum):
         balls.append(Ball(
-                    radius=20, 
-                    x=random.randint(-150, 50), y=0, 
+                    radius=random.randint(3, 40), 
+                    x=random.randint(-50, 50), y=0, 
                     velo=Vector(random.randint(-10, 10), random.randint(-10, 10)), 
-                    frictionForcePercent=0.392,
+                    frictionForcePercent=0.992,
                     userForceStrength=random.randint(1, 3),
                     color=random.choice(colors)))
     return balls
 
 def main():
     init()
-    gameLoop(generateBalls(25))
+    gameLoop(generateBalls(10))
 
 if __name__ == '__main__':
     main()
