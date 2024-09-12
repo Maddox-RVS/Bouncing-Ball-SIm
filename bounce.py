@@ -94,7 +94,7 @@ class Ball:
             self.userInput = True
 
     def getMass(self):
-        return (math.pi * self.radius**2) * self.massMultiplier
+        return (math.pi * self.radius**2)**(1/15)
     
     def getLeft(self) -> Vector:
         return Vector(self.x - self.radius, self.y)
