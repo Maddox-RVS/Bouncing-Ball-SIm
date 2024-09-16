@@ -39,6 +39,9 @@ class Ball:
         self.color: str = color
         self.userInput: bool = False
         self.isOnFloor: bool = False
+        self.isOnRoof: bool = False
+        self.isOnLeftWall: bool = False
+        self.isOnRightWall: bool = False
 
     def __draw(self):
         t.teleport(self.x, self.y)
@@ -50,18 +53,27 @@ class Ball:
         t.up()
 
     def __checkForFloor(self):
-        if self.y <= -1.0 * (CANVAS_HEIGHT / 2) + self.radius:
+        if self.x < -1.0 * (CANVAS_WIDTH / 2) + self.radius:
+            self.isOnLeftWall = True
+        else: self.isOnLeftWall = False
+        if self.x > (CANVAS_WIDTH / 2) - self.radius:
+            self.isOnRightWall = True
+        else: self.isOnRightWall = False
+        if self.y < -1.0 * (CANVAS_HEIGHT / 2) + self.radius:
             self.isOnFloor = True
         else: self.isOnFloor = False
+        if self.y > (CANVAS_HEIGHT / 2) - self.radius:
+            self.isOnRoof = True
+        else: self.isOnRoof = False
 
     def __putIntoBoundingScope(self):
-        if self.x < -1.0 * (CANVAS_WIDTH / 2) + self.radius:
+        if self.isOnLeftWall:
             self.x = -1.0 * (CANVAS_WIDTH / 2) + self.radius
-        if self.x > (CANVAS_WIDTH / 2) - self.radius:
+        if self.isOnRightWall:
             self.x = (CANVAS_WIDTH / 2) - self.radius
-        if self.y < -1.0 * (CANVAS_HEIGHT / 2) + self.radius: #floor
+        if self.isOnFloor:
             self.y = -1.0 * (CANVAS_HEIGHT / 2) + self.radius
-        if self.y > (CANVAS_HEIGHT / 2) - self.radius:
+        if self.isOnRoof:
             self.y = (CANVAS_HEIGHT / 2) - self.radius
 
     def __handleUserInput(self):
@@ -131,7 +143,7 @@ class Ball:
             0.5 * AIR_DENSITY * self.dragCoefficient * self.getMass() * (self.velo.y**2))
     
     def __getGravitationalForce(self) -> float:
-        return self.getMass() * self.gravitationalAcceleration
+        return -1.0 * (self.getMass() * self.gravitationalAcceleration)
     
     def __getPotentialEnergy(self) -> float:
         return self.getMass() * self.gravitationalAcceleration * (self.y - (-1.0 * (CANVAS_HEIGHT / 2)))
@@ -144,10 +156,10 @@ class Ball:
         dragForce.x = -1.0 * math.copysign(dragForce.x, self.velo.x)
         dragForce.y = -1.0 * math.copysign(dragForce.y, self.velo.y)
         normalForce: float = 0
-        if self.isOnFloor: normalForce = gravitationalForce
+        if self.isOnFloor: normalForce = -1.0 * gravitationalForce
         netForce: Vector2 = Vector2(
             dragForce.x,
-            dragForce.y - gravitationalForce + normalForce)
+            gravitationalForce + dragForce.y + normalForce)
         return netForce
     
     def __getImpulseVelocity(self) -> Vector2:
@@ -161,7 +173,6 @@ class Ball:
             -1.0 * math.copysign(p.y / self.getMass(), self.velo.y))
         return veloAfterP
 
-    # energyLoss: float = ((self.__getKeneticEnergy() - self.__getPotentialEnergy()) / self.__getKeneticEnergy()) * 100.0
     def __updateWallCollisionVelocity(self):
         self.__putIntoBoundingScope()
         if self.x <= (-1.0 * (CANVAS_WIDTH / 2)) + self.radius or self.x >= (CANVAS_WIDTH / 2) - self.radius:
