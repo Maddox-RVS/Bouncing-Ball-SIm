@@ -36,7 +36,6 @@ class Ball:
         self.gravitationalAcceleration: int = (9.81) * METERS_TO_PIXELS
         self.dragCoefficient: float = 0.5
         self.userForceStrength: int = userForceStrength
-        self.downStrengthMultipler: float = 3.0
         self.color: str = color
         self.userInput: bool = False
         self.isOnFloor: bool = False
@@ -70,7 +69,7 @@ class Ball:
             self.velo.y += self.userForceStrength
             self.userInput = True
         if keyboard.is_pressed('s') or keyboard.is_pressed('down'):
-            self.velo.y -= self.userForceStrength * self.downStrengthMultipler
+            self.velo.y -= self.userForceStrength
         if keyboard.is_pressed('d') or keyboard.is_pressed('right'):
             self.velo.x += self.userForceStrength
             self.userInput = True
@@ -132,7 +131,7 @@ class Ball:
             0.5 * AIR_DENSITY * self.dragCoefficient * self.getMass() * (self.velo.y**2))
     
     def __getGravitationalForce(self) -> float:
-        return -1.0 * (self.getMass() * self.gravitationalAcceleration)
+        return self.getMass() * self.gravitationalAcceleration
     
     def __getPotentialEnergy(self) -> float:
         return self.getMass() * self.gravitationalAcceleration * (self.y - (-1.0 * (CANVAS_HEIGHT / 2)))
@@ -141,10 +140,14 @@ class Ball:
 
     def __getNetForce(self) -> Vector2:
         gravitationalForce: float = self.__getGravitationalForce()
-        # dragForce: Vector2 = self.__getDragForce()
+        dragForce: Vector2 = self.__getDragForce()
+        dragForce.x = -1.0 * math.copysign(dragForce.x, self.velo.x)
+        dragForce.y = -1.0 * math.copysign(dragForce.y, self.velo.y)
+        normalForce: float = 0
+        if self.isOnFloor: normalForce = gravitationalForce
         netForce: Vector2 = Vector2(
-            0,
-            gravitationalForce)
+            dragForce.x,
+            dragForce.y - gravitationalForce + normalForce)
         return netForce
     
     def __getImpulseVelocity(self) -> Vector2:
