@@ -48,11 +48,11 @@ class Ball:
         self.y += self.velo.y
 
     def __draw(self):
-        t.teleport(self.x, self.y - self.radius)
+        t.teleport(self.x, self.y)
         t.fillcolor(self.color)
         t.begin_fill()
         t.pencolor(self.color)
-        t.circle(self.radius)
+        t.dot(self.radius * 2.0)
         t.end_fill()
         t.up()
 
